@@ -26,7 +26,13 @@ from PTS import PTSAlgorithm
 from UCBPMF import UCBPMFAlgorithm
 
 from W_Alg import LearnWAlgorithm
+from W_Alg_Gradient import LearnWAlgorithm_G
+from W_Alg_L1_G import LearnWAlgorithm_l1_G
 from W_Alg_L1 import LearnWAlgorithm_l1
+from W_Alg_Gradient_UpdateA import LearnWAlgorithm_G_UpdateA, LearnWAlgorithm_G_WRegu_UpdateA
+from W_Alg_L1_G_UpdateA import LearnWAlgorithm_l1_G_UpdateA
+# Command: python Main_revised.py --clusterfile Dataset/hetrec2011-delicious-2k/user_relation_adjacency_list.dat.part.200 --alg LearnWl1_UpdateA --diagnol Opt --dataset Delicious
+
 
 class Article():    
     def __init__(self, aid, FV=None):
@@ -102,9 +108,11 @@ if __name__ == '__main__':
     context_dimension = 25           # context dimension
     latent_dimension = 5 #latent dimension
     alpha = 0.3     # control how much to explore
-    lambda_ = 0.2   # regularization used in matrix A
+    #lambda_ = 0.2   # regularization used in matrix A
+    lambda_ = 0.5   # regularization used in matrix A
     Gepsilon = 0.3   # Parameter in initializing GW
     
+    UpdateWin = 1000
     totalObservations = 0
 
  
@@ -140,6 +148,7 @@ if __name__ == '__main__':
     algorithms = {}
 
     runCoLinUCB = runGOBLin = runLinUCB = run_M_LinUCB = run_Uniform_LinUCB= run_CFUCB = run_CFEgreedy = run_SGDEgreedy = run_PTS = False
+    run_LearnWl2 = run_LearnWl1 = run_LearnWl2_UpdateA = run_LearnWl1_UpdateA = run_LearnW_WRegu =   False
     if args.load:
         fileSig, timeRun = args.load.split('__')
         fileSig = fileSig+'_'
@@ -232,7 +241,34 @@ if __name__ == '__main__':
             if args.load:
                 algorithms['LearnWl1'] = obj
             else:
-                algorithms['LearnWl1'] = LearnWAlgorithm_l1(dimension = context_dimension, alpha = 0.2, lambda_ = lambda_,  n = userNum, W = W, windowSize = userNum, RankoneInverse=True)
+                algorithms['LearnWl1'] = LearnWAlgorithm_l1_G(dimension = context_dimension, alpha = alpha, lambda_ = lambda_,  n = userNum, W = W, windowSize = userNum, RankoneInverse=True)
+        elif args.alg == 'LearnWl1_UpdateA':
+            run_LearnWl1 = True
+            if args.load:
+                algorithms['LearnWl1_UpdateA'] = obj
+            else:
+                algorithms['LearnWl1_UpdateA'] = LearnWAlgorithm_l1_G_UpdateA(dimension = context_dimension, alpha = alpha, lambda_ = lambda_,  n = userNum, W = W, windowSize = userNum, RankoneInverse=True)
+
+        elif args.alg == 'LearnWl2':
+            run_LearnWl2 = True
+            if args.load:
+                algorithms['LearnWl2'] = obj
+            else:
+                algorithms['LearnWl2'] = LearnWAlgorithm_G(dimension = context_dimension, alpha = alpha, lambda_ = lambda_,  n = userNum, W = W, windowSize = userNum, RankoneInverse=True)
+
+        elif args.alg == 'LearnWl2_UpdateA':
+            run_LearnWl2_UpdateA = True
+            if args.load:
+                algorithms['LearnWl2_UpdateA'] = obj
+            else:
+                algorithms['LearnWl2_UpdateA'] = LearnWAlgorithm_G_UpdateA(dimension = context_dimension, alpha = alpha, lambda_ = lambda_,  n = userNum, W = W, windowSize = userNum, RankoneInverse=True)
+
+        elif args.alg == 'LearnW_WRegu':
+            run_LearnWl2_UpdateA = True
+            if args.load:
+                algorithms['LearnW_WRegu'] = obj
+            else:
+                algorithms['LearnW_WRegu'] = LearnWAlgorithm_G_WRegu_UpdateA(dimension = context_dimension, alpha = alpha , lambda_ = lambda_,  n = userNum, W = W, windowSize = userNum, RankoneInverse=True)
 
         elif args.alg == 'ALL':
             runCoLinUCB = runGOBLin = runLinUCB = run_M_LinUCB = run_Uniform_LinUCB=True
@@ -247,7 +283,7 @@ if __name__ == '__main__':
     else:
         fileName = address + "/processed_events_shuffled.dat"
     
-    fileSig = args.dataset+'_'+args.clusterfile.name.split('/')[-1]+'_shuffled_Clustering_'+args.alg+'_Diagnol_'+args.diagnol+'_'+fileName.split('/')[3]+'_'
+    fileSig = 'l2_'+ args.dataset+'_'+args.clusterfile.name.split('/')[-1]+'_shuffled_Clustering_'+args.alg+'_Diagnol_'+args.diagnol+'_'+fileName.split('/')[3]+'_' + str(alpha) + '_' + str(lambda_) + 'Update' + str(UpdateWin)
 
     articles_random = randomStruct()
     # if args.load:
@@ -342,7 +378,7 @@ if __name__ == '__main__':
                 articles_random.reward +=1
 
             for alg_name, alg in algorithms.items():
-                if alg_name in ['CoLin', 'CoLinRankOne','factorLinUCB', 'LearnW', 'LearnWl1']:
+                if alg_name in ['CoLin', 'CoLinRankOne','factorLinUCB', 'LearnWl2', 'LearnWl1', 'LearnWl1_UpdateA','LearnWl2_UpdateA', 'LearnW_WRegu']:
                     currentUserID = label[userID]
                 else:
                     currentUserID = userID
@@ -375,4 +411,7 @@ if __name__ == '__main__':
 
     #print stuff to screen and save parameters to file when the Yahoo! dataset file ends
     printWrite()
+    model_dump(alg, model_name, i)
+
+
     

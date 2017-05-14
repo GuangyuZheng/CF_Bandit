@@ -15,7 +15,7 @@ from numpy import linalg as LA
 from scipy.optimize import minimize
 from scipy.optimize import fmin_slsqp
 
-class WStruct_G:
+class WStruct_l1_G_UpdateA:
 	def __init__(self, featureDimension, lambda_,  userNum, W, windowSize, RankoneInverse):
 		self.windowSize = windowSize
 		self.counter = 0
@@ -25,18 +25,21 @@ class WStruct_G:
 		self.alpha_t = 0.0
 		self.delta = 1000000
 		self.TrueW = W
-
 		# Basic stat in estimating Theta
 		self.lambda_I = lambda_*np.identity(n = featureDimension*userNum)
 		self.A = lambda_*np.identity(n = featureDimension*userNum)
 		self.b = np.zeros(featureDimension*userNum)
+
+		self.TempA = lambda_*np.identity(n = featureDimension*userNum)
+		self.Tempb = np.zeros(featureDimension*userNum)
+
 		self.UserTheta = np.zeros(shape = (featureDimension, userNum))
 		#self.UserTheta = np.random.random((featureDimension, userNum))
 		self.AInv = np.linalg.inv(self.A)
 		
 		#self.W = np.random.random((userNum, userNum))
-                self.W = np.identity(n = userNum)
-                #self.W = self.TrueW
+		self.W = np.identity(n = userNum)
+		#self.W = self.TrueW
 		self.Wlong = vectorize(self.W)
 		self.batchGradient = np.zeros(userNum*userNum)
 
@@ -51,17 +54,26 @@ class WStruct_G:
 			self.W_y_arr.append([])
 		
 	def updateParameters(self, articlePicked, click,  userID):	
+
+		TempFeatureM = np.zeros(shape =(len(articlePicked.featureVector), self.userNum))
+		TempFeatureM.T[userID] = articlePicked.featureVector
+		TempFeatureV = vectorize(TempFeatureM)
+		self.TempA += np.outer(TempFeatureV, TempFeatureV)
+		self.Tempb += click * TempFeatureV
+
+		self.A = self.lambda_I + np.dot(self.BigW.T, np.dot((self.TempA- self.lambda_I) , self.BigW))  
+		self.b = np.dot(self.BigW.T, self.Tempb)
+
 		self.counter +=1
 		self.Wlong = vectorize(self.W)
 		featureDimension = len(articlePicked.featureVector)
+		'''
 		T_X = vectorize(np.outer(articlePicked.featureVector, self.W.T[userID])) 
 		self.A += np.outer(T_X, T_X)	
 		self.b += click*T_X
-		if self.RankoneInverse:
-			temp = np.dot(self.AInv, T_X)
-			self.AInv = self.AInv - (np.outer(temp,temp))/(1.0+np.dot(np.transpose(T_X),temp))
-		else:
-			self.AInv =  np.linalg.inv(self.A)
+		'''
+
+		self.AInv =  np.linalg.inv(self.A)
 		self.UserTheta = matrixize(np.dot(self.AInv, self.b), len(articlePicked.featureVector)) 
 
 		Xi_Matirx = np.zeros(shape = (featureDimension, self.userNum))
@@ -72,40 +84,40 @@ class WStruct_G:
 		self.W_X_arr[userID].append(W_X_current)
 		self.W_y_arr[userID].append(click)
 
-		#print np.asarray(self.W_X_arr[userID]).shape
+		
 		#print self.windowSize
 		if self.counter%self.windowSize ==0:
 			for i in range(len(self.W)):
 				if len(self.W_X_arr[i]) !=0:
 					def fun(w):
 						w = np.asarray(w)
-						#return np.sum((np.dot(self.W_X_arr[i], w) - self.W_y_arr[i])**2, axis = 0) + self.lambda_*np.linalg.norm(w)**2
-                                		return np.sum((np.dot(self.W_X_arr[i], w) - self.W_y_arr[i])**2, axis = 0) + self.lambda_*np.linalg.norm(w-self.TrueW.T[i],2)**2
+						return np.sum((np.dot(self.W_X_arr[i], w) - self.W_y_arr[i])**2, axis = 0) + self.lambda_*np.linalg.norm(w,1)
+						#return np.sum((np.dot(self.W_X_arr[i], w) - self.W_y_arr[i])**2, axis = 0) + self.lambda_*np.linalg.norm(w-self.TrueW,2)
+
 					def evaluateGradient(w):
 						w = np.asarray(w)
 						X = np.asarray(self.W_X_arr[i])
 						y = np.asarray(self.W_y_arr[i])
-                                                #grad = np.dot(np.transpose(X) , ( np.dot(X,w)- y)) + self.lambda_ * w
+						grad = np.dot(np.transpose(X) , ( np.dot(X,w)- y)) + self.lambda_ * np.sign(w)
+						return grad
 
-						grad = np.dot(np.transpose(X) , ( np.dot(X,w)- y)) + self.lambda_ * (w - self.TrueW.T[i])
-						return 2*grad
-						
 					current = self.W.T[i]
 					res = minimize(fun, current, constraints = getcons(len(self.W)), method = 'SLSQP', jac = evaluateGradient, bounds=getbounds(len(self.W)), options={'disp': False})
 					self.W.T[i] = res.x
 					#print self.W.T[i], sum(self.W.T[i])
-					#self.CoTheta.T[i] = np.dot(self.UserTheta, self.W.T[i])
 			
 			if self.windowSize< 2000:
 				self.windowSize = self.windowSize*2 
 			
+			#self.windowSize = 2000
+			
 		self.CoTheta = np.dot(self.UserTheta, self.W)
-
 		self.BigW = np.kron(np.transpose(self.W), np.identity(n=len(articlePicked.featureVector)))
 		self.CCA = np.dot(np.dot(self.BigW , self.AInv), np.transpose(self.BigW))
 
 		self.BigTheta = np.kron(np.identity(n=self.userNum) , self.UserTheta)
 	def getProb(self, alpha, article, userID):
+		#print userID
 		TempFeatureM = np.zeros(shape =(len(article.featureVector), self.userNum))
 		TempFeatureM.T[userID] = article.featureVector
 		TempFeatureV = vectorize(TempFeatureM)
@@ -119,9 +131,9 @@ class WStruct_G:
 
 
 		
-class LearnWAlgorithm_G:
+class LearnWAlgorithm_l1_G_UpdateA:
 	def __init__(self, dimension, alpha, lambda_, n, W,  windowSize, RankoneInverse = False):  # n is number of users
-		self.USERS = WStruct_G(dimension, lambda_, n, W, windowSize, RankoneInverse)
+		self.USERS = WStruct_l1_G_UpdateA(dimension, lambda_, n, W, windowSize, RankoneInverse)
 		self.dimension = dimension
 		self.alpha = alpha
 

@@ -22,8 +22,17 @@ from CFEgreedy import CFEgreedyAlgorithm
 from EgreedyContextual import EgreedyContextualStruct
 from PTS import PTSAlgorithm
 from UCBPMF import UCBPMFAlgorithm
+
+from W_Alg import LearnWAlgorithm
+from W_Alg_Gradient import LearnWAlgorithm_G
+from W_Alg_L1_G import LearnWAlgorithm_l1_G
+from W_Alg_L1 import LearnWAlgorithm_l1
+from W_Alg_Gradient_UpdateA import LearnWAlgorithm_G_UpdateA, LearnWAlgorithm_G_WRegu_UpdateA
+from W_Alg_L1_G_UpdateA import LearnWAlgorithm_l1_G_UpdateA
+
 import warnings
 
+# python YahooMain.py  --YahooDataFile ../../../MyResearch/datasets/R6/ --alg LearnWl2_UpdateA --userNum 160 --Sparsity 160 --diag Orgin
 # structure to save data from random strategy as mentioned in LiHongs paper
 class randomStruct:
     def __init__(self):
@@ -137,8 +146,10 @@ if __name__ == '__main__':
     articles_random = randomStruct()
     algorithms = {}
     runCoLinUCB = runGOBLin = runLinUCB = run_M_LinUCB = run_Uniform_LinUCB= run_CFUCB = run_CFEgreedy = run_SGDEgreedy = run_PTS = False
+    LearnWl2 = LearnWl2_UpdateA = LearnWl1 = LearnWl1_UpdateA = LearnW_WRegu_UpdateA = False
 
     tsave = 60*60*47 # Time interval for saving model.
+    #tsave = 6
     tstart = time.time()
 
     if args.load:
@@ -160,6 +171,37 @@ if __name__ == '__main__':
                 algorithms['CoLin'] = obj
             else:
                 algorithms['CoLin'] = AsyCoLinUCBAlgorithm(dimension=context_dimension, alpha = alpha, lambda_ = lambda_, n = userNum, W = W)
+        elif args.alg == 'LearnWl2':
+            runLearnWl2 = True
+            if args.load:
+                algorithms['LearnWl2'] = obj
+            else:
+                algorithms['LearnWl2'] = LearnWAlgorithm_G(dimension = context_dimension, alpha = alpha, lambda_ = lambda_,  n = userNum, W = W, windowSize = userNum*100, RankoneInverse=False)
+        elif args.alg == 'LearnWl2_UpdateA':
+            LearnWl2_UpdateA = True
+            if args.load:
+                algorithms['LearnWl2_UpdateA'] = obj
+            else:
+                algorithms['LearnWl2_UpdateA'] = LearnWAlgorithm_G_UpdateA(dimension = context_dimension, alpha = alpha, lambda_ = lambda_,  n = userNum, W = W, windowSize = userNum*100, RankoneInverse=False)
+        elif args.alg == 'LearnW_WRegu_UpdateA':
+            LearnW_WRegu_UpdateA = True
+            if args.load:
+                algorithms['LearnW_WRegu_UpdateA'] = obj
+            else:
+                algorithms['LearnW_WRegu_UpdateA'] = LearnWAlgorithm_G_WRegu_UpdateA(dimension = context_dimension, alpha = alpha, lambda_ = lambda_,  n = userNum, W = W, windowSize = userNum*100, RankoneInverse=False)
+        elif args.alg == 'LearnWl1':
+            LearnWl1 = True
+            if args.load:
+                algorithms['LearnWl1'] = obj
+            else:
+                algorithms['LearnWl1'] = LearnWAlgorithm_l1_G(dimension = context_dimension, alpha = alpha, lambda_ = lambda_,  n = userNum, W = W, windowSize = userNum*100, RankoneInverse=True)
+
+        elif args.alg == 'LearnWl1_UpdateA':
+            LearnWl1_UpdateA = True
+            if args.load:
+                algorithms['LearnWl1_UpdateA'] = obj
+            else:
+                algorithms['LearnWl1_UpdateA'] =  LearnWAlgorithm_l1_G_UpdateA(dimension = context_dimension, alpha = alpha, lambda_ = lambda_,  n = userNum, W = W, windowSize = userNum*100, RankoneInverse=True)
         elif args.alg == 'GOBLin':
             runGOBLin = True
         elif args.alg == 'LinUCB':
@@ -306,10 +348,12 @@ if __name__ == '__main__':
                 if totalObservations%batchSize==0:
                     printWrite()
                     tend = time.time()
+                    '''
                     if tend-tstart>tsave:
                         model_name = 'Yahoo_'+str(clusterNum)+'_'+alg_name+'_'+dataDay+'_' + timeRun                    
-                        model_dump(alg, model_name, line, day)
+                        model_dump(alg, model_name, line, dataDay)
                         tstart = tend
+                    '''
                 if totalObservations%statBatchSize==0:
                     WriteStat()
             #print stuff to screen and save parameters to file when the Yahoo! dataset file ends
@@ -317,6 +361,6 @@ if __name__ == '__main__':
             WriteStat()
         for alg_name, alg in algorithms.items():
             model_name = 'Yahoo_'+str(clusterNum)+'_'+alg_name+'_'+dataDay+'_' + timeRun                    
-            model_dump(alg, model_name, line, day)
+            model_dump(alg, model_name, line, dataDay)
             tstart = tend
         # sys.exit()  
