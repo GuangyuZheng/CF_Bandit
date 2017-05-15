@@ -14,9 +14,11 @@ from scipy.spatial import distance
 from LastFM_util_functions_2 import *#getFeatureVector, initializeW, initializeGW, parseLine, save_to_file, initializeW_clustering, initializeGW_clustering
 #from LastFM_util_functions import getFeatureVector, initializeW, initializeGW, parseLine, save_to_file
 
-from CoLin import AsyCoLinUCBUserSharedStruct, AsyCoLinUCBAlgorithm, CoLinUCBUserSharedStruct
+from CoLin import CoLinAlgorithm
 from LinUCB import LinUCBUserStruct, N_LinUCBAlgorithm
-from GOBLin import GOBLinSharedStruct
+from GOBLin import GOBLinAlgorithm
+from CLUB import CLUBAlgorithm
+from COFIBA import COFIBAAlgorithm
 
 from factorLinUCB import FactorLinUCBAlgorithm
 from CF_UCB import CFUCBAlgorithm
@@ -108,6 +110,7 @@ if __name__ == '__main__':
     context_dimension = 25           # context dimension
     latent_dimension = 5 #latent dimension
     alpha = 0.3     # control how much to explore
+    alpha_2 = 0.5   # For CLUB
     #lambda_ = 0.2   # regularization used in matrix A
     lambda_ = 0.5   # regularization used in matrix A
     Gepsilon = 0.3   # Parameter in initializing GW
@@ -147,7 +150,7 @@ if __name__ == '__main__':
 
     algorithms = {}
 
-    runCoLinUCB = runGOBLin = runLinUCB = run_M_LinUCB = run_Uniform_LinUCB= run_CFUCB = run_CFEgreedy = run_SGDEgreedy = run_PTS = False
+    runCoLinUCB = runGOBLin = runLinUCB = run_M_LinUCB = run_Uniform_LinUCB= run_CFUCB = run_CFEgreedy = run_SGDEgreedy = run_PTS = run_CLUB = run_COFIBA=False
     run_LearnWl2 = run_LearnWl1 = run_LearnWl2_UpdateA = run_LearnWl1_UpdateA = run_LearnW_WRegu =   False
     if args.load:
         fileSig, timeRun = args.load.split('__')
@@ -175,6 +178,19 @@ if __name__ == '__main__':
                 algorithms['CoLinRankOne'] = AsyCoLinUCBAlgorithm(dimension=context_dimension, alpha = alpha, lambda_ = lambda_, n = userNum, W = W, update='RankOne')
         elif args.alg == 'GOBLin':
             runGOBLin = True
+        elif args.alg == 'CLUB':
+            run_CLUB = True
+            if args.load:
+                algorithms['CLUB'] = obj
+            else:
+                algorithms['CLUB'] = CLUBAlgorithm(dimension =context_dimension,alpha = alpha, lambda_ = lambda_, n = OriginaluserNum, alpha_2 = alpha_2, cluster_init = 'Erdos-Renyi') 
+        elif args.alg == 'COFIBA':
+            run_COFIBA = True
+            if args.load:
+                algorithms['COFIBA'] = obj
+            else:
+                algorithms['COFIBA'] = COFIBAAlgorithm(dimension =context_dimension,alpha = alpha,  alpha_2 = alpha_2, lambda_ = lambda_, n = OriginaluserNum, itemNum = itemNum,cluster_init = 'Erdos-Renyi') 
+
         elif args.alg == 'LinUCB':
             runLinUCB = True
             if args.load:
@@ -397,7 +413,7 @@ if __name__ == '__main__':
                 AlgRegret[alg_name].append(regret) 
 
                 if save_flag:
-                    model_name = args.dataset+'_'+str(nClusters)+'_shuffled_Clustering_'+alg_name+'_Diagnol_'+args.diagnol+'_' + timeRun
+                    model_name = 'saved_models/'+args.dataset+'_'+str(nClusters)+'_shuffled_Clustering_'+alg_name+'_Diagnol_'+args.diagnol+'_' + timeRun
                     model_dump(alg, model_name, i)
 
             save_flag = 0
@@ -411,6 +427,7 @@ if __name__ == '__main__':
 
     #print stuff to screen and save parameters to file when the Yahoo! dataset file ends
     printWrite()
+    model_name = 'saved_models/'+args.dataset+'_'+str(nClusters)+'_shuffled_Clustering_'+alg_name+'_Diagnol_'+args.diagnol+'_' + timeRun
     model_dump(alg, model_name, i)
 
 
