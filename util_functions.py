@@ -3,6 +3,7 @@ from math import log
 import numpy as np 
 from random import *
 from custom_errors import FileExists 
+import matplotlib.pyplot as plt
 
 def gaussianFeature(dimension, argv):
 	mean = argv['mean'] if 'mean' in argv else 0
@@ -107,3 +108,7 @@ class observation_entry():
 		self.noise = noise
 
 
+def showheatmap(W):
+    plt.pcolor(W)
+    plt.colorbar()
+    plt.show()

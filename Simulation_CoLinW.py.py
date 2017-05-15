@@ -11,12 +11,13 @@ from conf import sim_files_folder, result_folder, save_address
 from util_functions import *
 from Articles import *
 from Users import *
-from CLUB import *
+# from CLUB import *
 from LinUCB import *
-from LinUCB_Gradient import *
+# from LinUCB_Gradient import *
 from CoLin import *
-from GOBLin import *
-from COFIBA import *
+# from GOBLin import *
+# from CoLin_Grad import *
+# from COFIBA import *
 from W_Alg import *
 from W_Alg_Gradient import *
 from W_Alg_Gradient_UpdateA import *
@@ -25,15 +26,46 @@ from W_Alg_L1 import *
 from W_Alg_L1_G import *
 from W_Alg_L1_G_UpdateA import * 
 #from LearnW import *
-from eGreedyUCB1 import *
+# from eGreedyUCB1 import *
 from scipy.linalg import sqrtm
 import math
 import argparse
 import matplotlib.pyplot as plt
-from CoLin_Grad import *
+
 
 
 from sklearn.decomposition import TruncatedSVD
+
+def ConnectionDiff(trueW, EstimatedW):
+	r = np.shape(trueW)[0]
+	c = np.shape(trueW)[1]
+	G1 = np.identity(r)
+	G2 = np.identity(r)
+	res = 0
+	thres = 0.0
+
+	tp = 0
+	tn = 0
+	fp = 0
+	fn = 0
+
+	for i in range(r):
+		for j in range(c):
+			if i !=j:
+				if trueW[i][j] > thres and EstimatedW[i][j] > thres:
+					tp +=1
+				elif trueW[i][j] > thres and EstimatedW[i][j] <= thres:
+					fn +=1
+				elif trueW[i][j] <= thres and EstimatedW[i][j]<= thres:
+					tn +=1
+				elif trueW[i][j] <= thres and EstimatedW[i][j] >thres:
+					fp +=1
+
+	precision =  float(tp)/(float(tp) + float(fp))
+	recall = float(tp)/(float(tp) + float(fn))
+	F = 2*(precision*recall)/(precision + recall)
+	return precision, recall, F
+
 
 
 class simulateOnlineData():
@@ -61,7 +93,8 @@ class simulateOnlineData():
 		self.poolArticleSize = poolArticleSize
 		self.batchSize = batchSize
 		
-		self.W = self.initializeW(sparseLevel,epsilon)
+		# self.W = self.initializeW(sparseLevel,epsilon)
+		self.W = self.initializeArbiW(sparseLevel,epsilon) #Arib W for testing
 		#print 'WWWWWWWWWWWWWW', self.W
 
 		W = self.W.copy()
@@ -80,13 +113,16 @@ class simulateOnlineData():
 
 		G = np.zeros(shape = (n, n))
 		for ui in self.users:
+			print ui.theta
 			sSim = 0
 			for uj in self.users:
 				sim = np.dot(ui.theta, uj.theta)
+				print sim
  				if ui.id == uj.id:
  					sim *= 1.0
 				G[ui.id][uj.id] = sim
 				sSim += sim
+
 				
 			G[ui.id] /= sSim
 			'''
@@ -129,7 +165,22 @@ class simulateOnlineData():
 			'''
 		return G
 
-		
+	# create user connectivity graph
+	def initializeArbiW(self, sparseLevel, epsilon):	
+		n = len(self.users)	
+		# if sparseLevel >=n or sparseLevel<=0:
+ 	# 		W = self.constructAdjMatrix()
+ 	# 	else:
+ 	# 		W = self.constructSparseMatrix(sparseLevel)   # sparse matrix top m users 
+ 	# 	#print 'W.T', W.T
+ 	# 	#W = np.identity(n)
+ 		W = np.zeros(shape = (n, n))
+ 		for i in range(n/2):
+ 			W[0][i] = 1.0
+ 		for i in range(n/2):
+ 			W[int(n/2)][int(n/2)+i] = 1.0
+ 		print W
+		return W.T	
 
 	# create user connectivity graph
 	def initializeW(self, sparseLevel, epsilon):	
@@ -375,12 +426,12 @@ class simulateOnlineData():
 				
 		# plot the results	
 		#showheatmap(self.W.T)
-		for alg_name, alg in algorithms.items():
-			#pass
+		# for alg_name, alg in algorithms.items():
+		# 	#pass
 
-			#alg.showLearntWheatmap()
-			print alg_name, ConnectionDiff(self.W, alg.getWholeW())
-			#print alg.getWholeW()
+		# 	alg.showLearntWheatmap()
+		# 	# print alg_name, ConnectionDiff(self.W, alg.getWholeW())
+		# 	print alg.getWholeW()
 
 
 		for alg_name, alg in algorithms.items():
@@ -389,7 +440,7 @@ class simulateOnlineData():
 				f.write('\n')
 
 			print '%s: %.2f' % (alg_name, BatchAverageRegret[alg_name][-1])
-		'''
+		# '''
 		f, axa = plt.subplots(2, sharex=True)
 		for alg_name, alg in algorithms.items():
 			axa[0].plot(tim_, BatchAverageRegret[alg_name],label = alg_name)
@@ -427,10 +478,10 @@ class simulateOnlineData():
 		plt.savefig('./SimulationResults/Regret' + str(timeRun_Save )+'.pdf')
 		plt.show()
 		plt.savefig('./SimulationResults/Regret' + str(timeRun_Save )+'.pdf')
-		'''
+		# '''
 
 if __name__ == '__main__':
-	iterations = 300
+	iterations = 200
 	NoiseScale = .1
 	matrixNoise = 0.3
 
@@ -444,7 +495,7 @@ if __name__ == '__main__':
 	ArticleGroups = 5
 
 	n_users = 40
-	UserGroups = 5
+	UserGroups = 2 # 2 groups: extrem case with 1.0 or -1.0
 
 	poolSize = 10
 	batchSize = 1
@@ -546,7 +597,7 @@ if __name__ == '__main__':
 			#algorithms['GOBLin'] = GOBLinAlgorithm( dimension= dimension, alpha = G_alpha, lambda_ = G_lambda_, n = n_users, W = simExperiment.getGW0(), RankoneInverse = RankoneInverse )
 
 			
-			#algorithms['CoLin_TrueW'] = CoLinAlgorithm(dimension=dimension, alpha = alpha, lambda_ = lambda_, n = n_users, W = simExperiment.getW(), RankoneInverse=RankoneInverse)
+			algorithms['CoLin_TrueW'] = CoLinAlgorithm(dimension=dimension, alpha = alpha, lambda_ = lambda_, n = n_users, W = simExperiment.getW(), RankoneInverse=RankoneInverse)
 			#algorithms['GOBLin'] = GOBLinAlgorithm( dimension= dimension, alpha = G_alpha, lambda_ = G_lambda_, n = n_users, W = simExperiment.getGW0(), RankoneInverse = RankoneInverse )
 
 			#algorithms['LearnW'] =  LearnWAlgorithm(dimension = dimension, alpha = alpha, lambda_ = lambda_, n = n_users, W = simExperiment.getW0(), windowSize = 2, RankoneInverse=RankoneInverse)
