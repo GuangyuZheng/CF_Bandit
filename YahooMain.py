@@ -22,6 +22,9 @@ from CFEgreedy import CFEgreedyAlgorithm
 from EgreedyContextual import EgreedyContextualStruct
 from PTS import PTSAlgorithm
 from UCBPMF import UCBPMFAlgorithm
+from CLUB import CLUBAlgorithm
+from COFIBA import COFIBAAlgorithm
+
 
 from W_Alg import LearnWAlgorithm
 from W_Alg_Gradient import LearnWAlgorithm_G
@@ -234,6 +237,18 @@ if __name__ == '__main__':
                 algorithms['FactorLinUCBAlgorithm'] = obj
             else:
                 algorithms['FactorLinUCBAlgorithm'] = FactorLinUCBAlgorithm(context_dimension = context_dimension, latent_dimension = dimension, alpha = 0.2, alpha2 = 0.1, lambda_ = lambda_, n = clusterNum, itemNum=itemNum, W = W, init='random', window_size = 3)    
+        elif args.alg == 'CLUB':
+            run_CLUB = True
+            if args.load:
+                algorithms['CLUB'] = obj
+            else:
+                algorithms['CLUB'] = CLUBAlgorithm(dimension =context_dimension,alpha = alpha, lambda_ = lambda_, n = OriginaluserNum, alpha_2 = alpha_2, cluster_init = 'Erdos-Renyi') 
+        elif args.alg == 'COFIBA':
+            run_COFIBA = True
+            if args.load:
+                algorithms['COFIBA'] = obj
+            else:
+                algorithms['COFIBA'] = COFIBAAlgorithm(dimension =context_dimension,alpha = alpha,  alpha_2 = alpha_2, lambda_ = lambda_, n = OriginaluserNum, itemNum = itemNum,cluster_init = 'Erdos-Renyi') 
 
         elif args.alg == 'CFEgreedy':
             run_CFEgreedy = True
