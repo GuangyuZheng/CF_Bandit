@@ -5,7 +5,7 @@ from scipy.sparse.csgraph import connected_components
 from scipy.sparse import csr_matrix
 class CLUBUserStruct(LinUCBUserStruct):
 	def __init__(self,featureDimension,  lambda_, userID):
-		LinUCBUserStruct.__init__(self,featureDimension = featureDimension, userID = userID,lambda_= lambda_)
+		LinUCBUserStruct.__init__(self,featureDimension = featureDimension, lambda_= lambda_)
 		self.reward = 0
 		self.CA = self.A
 		self.Cb = self.b
@@ -43,7 +43,7 @@ class CLUBUserStruct(LinUCBUserStruct):
 		pta = mean +  alpha * var*np.sqrt(math.log10(time+1))
 		return pta
 
-class CLUBAlgorithm(LinUCBAlgorithm):
+class CLUBAlgorithm():
 	def __init__(self,dimension,alpha,lambda_,n,alpha_2, cluster_init="Complete"):
 		self.time = 0
 		#N_LinUCBAlgorithm.__init__(dimension = dimension, alpha=alpha,lambda_ = lambda_,n=n)
@@ -87,8 +87,8 @@ class CLUBAlgorithm(LinUCBAlgorithm):
 		self.time +=1
 
 		return picked
-	def updateParameters(self, featureVector, click,userID):
-		self.users[userID].updateParameters(featureVector, click, self.alpha_2)
+	def updateParameters(self, articlePicked, click,userID):
+		self.users[userID].updateParameters(articlePicked.featureVector, click, self.alpha_2)
 	def updateGraphClusters(self,userID, binaryRatio):
 		n = len(self.users)
 		for j in range(n):
